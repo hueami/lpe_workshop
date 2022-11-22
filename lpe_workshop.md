@@ -2,6 +2,9 @@
 ![logo](logo.png)
 
 ## Einleitung
+Herzlich Willkommen zu unserem Linux Privilege Escalation Workshop!
+
+Wir befassen uns heute mit dem User- und Berechtigungensystem in Linux - insbesondere mit Fehlkonfigurationen die es uns erlauben, höhere Privilegien zu erschleichen. Dadurch lernen wir, was mögliche Einfallstore sind und wie wir sie vermeiden können.
 
 In Capture the Flags ist die Ausgangssituation häufig die, dass man einen Zugang zu einem unprivilegierten User hat, bzw. diesen durch das Ausnutzen von Schwachstellen erlangt.
 Dafür erhält man die erste Flagge, die User-Flag welche in der Regel im `home` Verzeichnis des Users liegt.
@@ -11,25 +14,28 @@ Das `/root` ist jedoch nur für einen User mit root-Rechten lesbar, also muss ma
 
 Es gibt grundsätzlich viele Wege an dieses Ziel zu kommen. Capture the Flags sind oftmals thematisiert, und es gibt nur einen Weg. In unserem Workshop wollen wir jedoch mehrere Wege aufzeigen. Daher verzichten wir auf eine root-Flag, das ist nach der ersten ausgenutzten Schwachstelle witzlos.
 
-Erfolgreich wart ihr, wenn die Shell euch ein `#`-Symbol zeigt, oder ihr auf den Befehl `id` mit der Ausgabe `uid=0(root) gid=0(root) groups=0(root)` belohnt werdet.
+Erfolgreich warst du, wenn die Shell ein `#`-Symbol zeigt, oder du auf den Befehl `id` mit der Ausgabe `uid=0(root) gid=0(root) groups=0(root)` belohnt wirst.
 
 > **_Hinweis:_**  Wir fokusieren uns in diesem Workshop auf das Ausnutzen von Fehlkonfigurationen. Automatisierte Skripte und Exploits werden wir kurz vorstellen, jedoch nicht genauer betrachten.
 
 Happy Hacking!
 
 ## Start
-Wir haben für euch eine Linux VM und einen Docker Container vorbereitet.
-Beides könnt ihr für diesen Workshop verwenden.
+Wir haben für den Workshop eine Linux VM und einen Docker Container vorbereitet, beides kannst du verwenden.
 Vorteil am Docker Container ist, dass er deutlich schmaler ist als die VM.
+
 Nachteil am Docker Container ist, dass aufgrund seiner Natur nicht alle Workshop-Aufgaben bearbeitet werden können.
 Das betrifft Cron Jobs und Docker selbst.
-Wenn es euch möglich ist, nutzt bitte die VM - dah habt ihr mehr von!
+
+**Wenn es dir möglich ist, nutze bitte die VM - damit du alle Schwachstellen nachvollziehen kannst!**
 
 ### Virtuelle Maschine
 - Installiere [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
-- Lade dir die Virtuelle Maschine aus [OneDrive](https://iteratec-my.sharepoint.com/:f:/r/personal/johannes_merkert_iteratec_com/Documents/lpe_workshop?csf=1&web=1&e=jeVnQh) herunter
-- Importieren die VM in VirtualBox über Datei => Appliance importieren => heruntergeladene Datei auswählen
+- Lade dir die VM aus [OneDrive](https://iteratec-my.sharepoint.com/:f:/r/personal/johannes_merkert_iteratec_com/Documents/lpe_workshop?csf=1&web=1&e=jeVnQh) herunter
+- Importiere die VM in VirtualBox über Datei => Appliance importieren
+  - Optical Drive und USB Controller kannst du dabei deaktivieren
 - Starte die VM  über das Kontextmenü (Rechtsklick => Start => Normaler Start) oder über den grünen Pfeil
+  - Wenn du eine Fehlermeldung bzgl. USB-Controller oder Optical Drive erhälst, klicke sie einfach weg
 - Du kannst auch deine lokale Konsole verwenden und via ssh auf die VM zugreifen (dann reicht auch der Headless Start)
   ```
   ssh -p 5678 john@127.0.0.1
@@ -44,20 +50,22 @@ Wenn es euch möglich ist, nutzt bitte die VM - dah habt ihr mehr von!
   ```
 - Alternativ, falls inline nicht funktioniert:
   ```
-  docker build . -t lpe/hacking:latest
+  docker build ./docker -t lpe/hacking:latest
   docker run --rm -it lpe/hacking:latest
   ```
 
 Wenn du in der Konsole `whoami` eingibst und als Antwort `john` kommt bist du bereit für unser gemeinsames Abenteuer
 
-> **Hinweis:_**  Bei Problemen oder Fragen meldet euch bitte bereits vor dem Workshop bei uns, damit wir euch unterstützen können.
+> **_Hinweis:_**  Bei Problemen oder Fragen meldet euch bitte bereits vor dem Workshop bei uns, damit wir euch unterstützen können.
 ## Enumeration
 
 ### Manuell
-Am Anfang steht immer die Recherche. Auf was für einem System befinde ich mich? Welche Linux Distribution, welche Kernel-Version? Mit diesen Infos lassen sich bspw. Kernel Exploits identifizieren.
+Am Anfang steht immer die Recherche. Auf was für einem System befinde ich mich? Welche Linux Distribution, welche Kernel-Version?
+Welche User sind noch auf diesem System angelegt? Welche Dateien liegen hier so rum? Mit diesen Infos lassen sich bspw. Kernel Exploits identifizieren, andere User übernehmen oder Passwörter finden.
 
 #### System
 - `hostname`
+- `/etc/os-release`
 - `uname -a`
 - `/proc/version`
 - `/etc/issue`
@@ -72,10 +80,6 @@ Am Anfang steht immer die Recherche. Auf was für einem System befinde ich mich?
 - `id`
 - `/etc/passwd`
 - `/etc/shadow`
-
-#### Netzwerk
-- `ifconfig`
-- `netstat`
 
 #### Dateien und Verzeichnisse
 - `ls -la`
@@ -105,7 +109,7 @@ Zum auspobieren liegen die Skripte unter `/home/john/enum`.
 Alle Befehle, welche in der Bash eingegeben wurden, werden im history file (`~/.bash_history`) gespeichert, auch Befehle die ein Passwort enthalten! Aus diesem Grund sollte man das Passwort wenn möglich nie als Parameter in einem Befehl mitgeben.
 
 ### Aufgabe
-Findet heraus bei mit welchen Credentials sich der User John zuletzt bei Docker angemeldet hat.
+Findet heraus bei mit welchen Credentials sich der User `john` zuletzt bei Docker angemeldet hat.
 
 ### Lessons Learned
 Nutzt wenn möglich `-stdin` um Passwörter einem Programm mitzugeben.
@@ -131,14 +135,15 @@ Die Werte sind durch Doppelpunkte getrennt und stehen für
 * Login shell
 
 Auf der Maschine gibt es noch einen User `debian`, kannst du das Passwort erraten?
-Bringt uns der User debian weiter?
+Mit `su debian` kannst du den User auf `debian` wechseln.
+Bringt uns der User weiter?
 
 ### Schwache Passwörter knacken
 Passwörter der Benutzer-Accounts sind in der `/etc/shadow` Datei als (salted) hash abgelegt.
 Diese Datei ist normalerweise nur mit root-Rechten lesbar.
 Vielleicht ist dir bei der Enumeration bereits aufgefallen, dass die Datei auf dieser Maschine für alle lesbar ist? Autsch.
 
-Mit bspw. `cat /etc/shadow` können wir uns deshalb den Inhalt ausgeben lassen.
+Mit bspw. `cat /etc/shadow` kannst du dir deshalb den Inhalt ausgeben lassen.
 Der Inhalt ähnelt der `/etc/passwd` Datei.
 
 ```
@@ -153,7 +158,7 @@ Dazu werden aus den Einträgen einer Wortliste mit beliebten Passwörtern Hashes
 Stimmen sie überein, so stimmt das Passwort mit dem Eintrag aus der Wortliste überein.
 
 Zwei bekannte Programme zum ausführen von Wörterbuch-Attacks auf Passwort-Hashes sind Hashcat und John the Ripper.
-Lasst uns das Passwort des Users `debian` mit John the Ripper knacken! Auf der Maschine ist John the Ripper installiert und im home Verzeichnis von john eine Datei mit 100 beliebten Passwörtern `/home/john/top_100.txt`.
+Lass uns das Passwort des Users `debian` mit John the Ripper knacken! Auf der Maschine ist John the Ripper installiert und im home Verzeichnis von `john` eine Datei mit 100 beliebten Passwörtern `/home/john/top_100.txt`.
 
 > **_Tipp:_**  Eine umfassende Sammlung von Wörterlisten für User, Passwörter, Verzeichnisse bietet [SecLists](https://github.com/danielmiessler/SecLists).
 
@@ -162,10 +167,10 @@ Für das knacken des Passworts müssen zwei Schritte durchgeführt werden:
 2. Wörterliste-Attacke auf die Passwort-Hashes
 
 ### Aufgabe
-Führt die oben genannten Schritte durch, um das Passwort zu knacken. Wie lautet es?
+Führe die oben genannten Schritte durch, um das Passwort zu knacken. Wie lautet es?
 
 ### Extra Aufgabe: Hashcat
-Ein weiteres tool zum cracken von Hashes ist wie bereits genannt Hashcat.
+Ein weiteres Tool zum cracken von Hashes ist wie bereits genannt Hashcat.
 `hashcat -h` sagt uns, dass hashcat neben dem Hash und einem Wörterbuch einen Hash-Typ und eine Attack-Mode benötgt.
 
 An der Struktur eines Hashes kann man erkennen, welche Hash-Funktion zum erzeugen genutzt wurde.
@@ -179,6 +184,8 @@ hashcat -m <Hash-Type-Code> -a 0 <file with hashes> <dictionary file>
 ```
 
 Optional können wir die Ergebnisse noch mit `-o` in eine Datei schreiben lassen.
+
+Auf! Cracke das Passwort mit Hashcat!
 
 ### Lessons Learned
 Schwache Passwörter (insbesondere solche die in Wörtlisten stehen könnten) sind absolut zu vermeiden! Kein Passwort sowieso. Auch Passwörter die sich erraten lassen sind nicht zu empfehlen.
@@ -198,9 +205,9 @@ Bei einigen Programmen gibt es die Möglichkeit, Dateien zu lesen oder eine shel
 Eine Sammlung dieser Programme und wie man diese Schwachstelle ausnutzt bietet [gtfobins](https://gtfobins.github.io/).
 
 ### Aufgabe
-Schaut doch mal mit `sudo -l`, welche Programme john mit für sudo konfiguriert sind.
-Sucht nach diesen Programmen auf [gtfobins](https://gtfobins.github.io/) und spielt ein bisschen mit ihnen herum.
-Schafft ihr es, root-Rechte zu erlangen?
+Schau doch mal mit `sudo -l`, welche Programme `john` mit für sudo konfiguriert sind.
+Such nach diesen Programmen auf [gtfobins](https://gtfobins.github.io/) und spiele ein bisschen mit ihnen herum.
+Schaffst du es es, root-Rechte zu erlangen?
 
 ### Extra-Aufgabe: LD_PRELOAD
 LD_PRELOAD erlaubt es Programmen, geteilte Bibliotheken (sog. shared objects) zu verwenden. Wenn die `env_keep` Option aktiviert ist, können wir eine geteilte Bibliothek erstellen und einem Programm welches wir mit sudo aufrufen mitgeben. Die Biblothek wird dann zuerst ausgeführt. Bspw. könnte so eine Bibliothek eine root-shell spawnen.
@@ -233,9 +240,9 @@ sudo LD_PRELOAD=/home/john/shell.so find
 ```
 
 ### Lessons Learned
-Geht sparsam um mit sudo Berechtigungen.
-Prüft das Binary vorher auf [gtfobins](https://gtfobins.github.io/) ob sie LPE oder das bearbeiten geschützter Dateien erlauben.
-Aktiviert nicht die `env_keep` Option, wenn es nicht absolut nötig ist.
+Geh sparsam um mit sudo-Berechtigungen.
+Prüfe Binaries vorher auf [gtfobins](https://gtfobins.github.io/) ob sie Privilege Escalation oder das Bearbeiten geschützter Dateien erlauben.
+Aktiviere nicht die `env_keep` Option, wenn es nicht absolut nötig ist.
 
 ## SUID/SGID
 
@@ -255,7 +262,7 @@ Davon gibt es jeweils drei Blöcke: Besitzer, Gruppe, Jeder.
 
 Im Beispiel oben hat der User `john` für die Datei `lpe_workshop.md` die Berechtigungen lesen und schreiben, da er Besitzer ist. Die Gruppe `user` darf lesen und alle anderen User dürfen gar nichts.
 
-Der root User draf grundsätzlich alles.
+Der root User darf grundsätzlich alles (deshalb sind wir so heiß auf ihn).
 
 ## SUID/SGID Bit
 Manchmal sieht man im Besitzer- oder Gruppenblock einer Datei anstelle des `x` ein `s`. Das ist dann das SUID-, bzw. SGID-Bit. Es besagt, dass diese Datei mit den Rechten des Besitzers, bzw. mit den der Gruppe. Im Beispiel unten ist das Programm passwd mit dem SUID Bit versehen, denn ein normaler User soll es ausführen können, um sein Passwort zu ändern, aber dafür muss eine geschützte Datei bearbeitet werden (`/etc/shadow`), die er sonst nicht bearbeiten darf.
@@ -275,13 +282,13 @@ find / -perm -g=s -group root 2>/dev/null
 Wie hilft uns das, root Rechte auf einer Maschine zu erlangen?
 Auf [gtfobins](https://gtfobins.github.io/) kann man die Programme auf SUID filtern.
 
-Aus manchen Programmen kann man bei gesetztem SUID/SGID Flag ausbrechen und und eine root shell spawnen. Wenn das SUID-/SGID-Bit auf einem Editor gesetzt ist, kann man alternativ auch die `/etc/passwd` Datei bearbeiten und eine neuen User mit root-Rechten anlegen.
+Aus manchen Programmen kann man bei gesetztem SUID/SGID Flag ausbrechen und und eine root-Shell spawnen. Wenn das SUID-/SGID-Bit auf einem Editor gesetzt ist, kann man alternativ auch die `/etc/passwd` Datei bearbeiten und eine neuen User mit root-Rechten anlegen.
 
 ### Aufgabe
-Findet eine Datei mit SUID/SGID-Bit und versucht root-Rechte zu erlangen.
+Finde Dateien mit SUID/SGID-Bit und versuche root-Rechte zu erlangen.
 
 ### Lessons Learned
-Prüft euer System mit den o.g. `find` Befehlen, welche Programme das Sticky-Bit gesetzt haben und ob das ausgenutzt werden kann auf [gtfobins](https://gtfobins.github.io/).
+Durchsuche dein System mit den o.g. `find` Befehlen, welche Programme das Sticky-Bit gesetzt haben und prüfe auf [gtfobins](https://gtfobins.github.io/), ob das ausgenutzt werden kann.
 
 ## Capabilities
 
@@ -300,7 +307,7 @@ getcap -r / 2>/dev/null
 Findet eine Datei mit gesetzten Capabilities und den passenden Exploit auf [gtfobins](https://gtfobins.github.io/).
 
 ### Lessons Learned
-Prüft euer System mit `getcap`, welche Programme Capabilitites haben und ob das ausgenutzt werden kann auf [gtfobins](https://gtfobins.github.io/).
+Durchsuche dein System mit `getcap`, welche Programme Capabilitites haben und prüfe auf [gtfobins](https://gtfobins.github.io/), ob das ausgenutzt werden kann.
 
 ## CronJobs
 Cron Jobs erlauben es, Programme oder Skripte zu bestimmten Zeiten automatisiert ausführen zu lassen.
@@ -310,7 +317,7 @@ Diese Jobs werden in einer Datei gespeichert, `/etc/crontab` welche standardmä�
 > Das Beispiel kann deshalb im Docker Container nicht nachgestellt werden. Trotzdem sollten Enum Skripte diese Miskonfiguration erkennen.
 
 ### Pfad-Variable
-Am Anfang der Cron Tabelle ist zum einen die Shell definiert, welche Cron verwendet, zum anderen wird eine Pfad-Variable erstellt, in welcher Cron nach ausführbaren Dateien sucht, wenn ihr Aufruf nicht mit vollqualifiziertem Pfad erfolgt. Die Reihenfolge erfolgt dabei von links nach rechts.
+Am Anfang der Cron Tabelle ist zum einen die Shell definiert, welche Cron verwendet. Zum anderen wird eine Pfad-Variable definiert, in welcher Cron nach ausführbaren Dateien sucht, wenn ihr Aufruf nicht mit vollqualifiziertem Pfad erfolgt. Die Reihenfolge ist dabei von links nach rechts.
 
 Etwas weiter unten ist der Job `backup_root.sh` definiert. Wie wir sehen ist der Aufruf nicht mit vollqualifiziertem Pfad.
 
@@ -322,7 +329,9 @@ find / -name backup_root.sh 2>/dev/null
 ```
 
 #### Aufgabe
-Wenn wir eine Datei mit gleichem Namen in einem Verzeichnis hätten, welches vor `/bin` durchsucht wird, dann würde diese Datei ausgeführt, anstatt der Datei `/bin/backup_root.sh`
+Wenn wir ein Skript mit gleichem Namen in einem Verzeichnis hätten, welches vor `/bin` durchsucht wird, dann würde diese Datei ausgeführt, anstatt der Datei `/bin/backup_root.sh`. Und dieses Skript würde dann machen, was wir wollen.
+
+Hätte, würde, könnte.. Mach es!
 
 ### Schwache Datei-Berechtigungen
 Mit `cat /etc/crontab` sehen wir in der Cron Tabelle u.a. das Skript backup_home.sh. Wir können uns mit `ls -la` die Berechtigungen dieses Skripts ansehen:
@@ -341,28 +350,29 @@ Dass wir das Skript bearbeiten können sollten wir ausnutzen.
 In der Cron Tabelle gibt es einen weiteren interessanten Job, welcher mit root-Rechten läuft: `archive_john.sh`.
 Das Skript erstellt mit tar ein Archiv aller Dateien in `/home/john` und speichert es als `/backup/john.tgz`. Dafür nutzt es das Wildcard `*` um alle Dateien im Verzeichnis `/home/john` dem Archiv hinzuzufügen.
 
-In der tar Seite auf [gtfobins](https://gtfobins.github.io/gtfobins/tar/) sehen wir, dass tar mit Argumenten aufgerufen werden kann, um einen Shell zu spawnen.
-Wenn tar mit root-Berechtigung aufgerufen wird, werden diese Berechtigungen nicht verworfen und wir haben eine root-Shell.
-Aber wie bekommen wir die Argumente in tar? Das Skript selbst ist leider nur vom Besitzer beschreibbar. Hier kommt das Wildcard ins Spiel. Wenn tar eine Datei dem Archiv hinzufügen möchte und der Dateiname wie ein Argument aussieht, wird es als Argument interpretiert.
+Im [tar-Bereich auf gtfobins](https://gtfobins.github.io/gtfobins/tar/) sehen wir, dass `tar` mit Argumenten aufgerufen werden kann, um einen Shell zu spawnen.
+Wenn `tar` mit root-Berechtigung aufgerufen wird, werden diese Berechtigungen nicht verworfen und wir haben eine root-Shell.
+
+Aber wie bekommen wir die Argumente in `tar`? Das Skript selbst ist leider nur vom Besitzer beschreibbar. Hier kommt das Wildcard ins Spiel. Wenn tar eine Datei dem Archiv hinzufügen möchte und der Dateiname wie ein Argument aussieht, wird es als Argument interpretiert.
 
 #### Aufgabe
-Injecte die benötigten Argumente in tar, um eine root-bash zu erhalten.
+Injecte die benötigten Argumente in `tar`, um eine root-Shell zu erhalten.
 
 ### Lessons Learned
-Prüft die Jobs, welche ihr konfiguriert habt.
+Prüfe die Jobs, welche du konfiguriert hast.
 - Werden sie mit root-Rechten ausgeführt?
 - Sind Verzeichnisse im Pfad, welche nicht nur von root beschrieben werden können?
-- Werden in Skripten Wildcards verwendet?
+- Werden in Skripten Wildcards verwendet und kann das ausgenutzt werden?
 
 ## Kernel Exploits
 Wenn ein System nicht auf den atuellsten Stand ist, ist der Kernel ggf. anfällig für einen Kernel Exploit. Finden lassen sie sich entweder mit einem Tool/Skript (bspw. [Linux Exploit Suggester](https://github.com/mzet-/linux-exploit-suggester) oder mit metasploits Modul local_exploit_suggester) oder durch google Kernel Version + exploit und Datenbanken wie bspw. [Exploit-DB](https://www.exploit-db.com/).
 
 ### Lessons Learned
-Auch wenn wir das jetzt nicht ausprobiert haben sollte klar sein: haltet euer System auf dem neusten Stand!
+Auch wenn wir das jetzt nicht ausprobiert haben sollte klar sein: halte dein System aktuell!
 
 ## Und jetzt?
-Ihr habt Blut geleckt und möchtet gerne mehr zu Linux Privilege Escalation, Hardening & Co. erfahren und machen?
-Hier ein paar Ressourcen zum Thema, damit euch zum Ende des Jahres nicht langweilig wird:
+Du hast Blut geleckt und möchtest gerne mehr zu Linux Privilege Escalation, Hardening & Co. erfahren und machen?
+Hier ein paar Ressourcen zum Thema, damit dir zum Ende des Jahres nicht langweilig wird:
 
 ### Lesen
 - [Hacktricks](https://book.hacktricks.xyz/linux-hardening/privilege-escalation)
@@ -370,7 +380,7 @@ Hier ein paar Ressourcen zum Thema, damit euch zum Ende des Jahres nicht langwei
 - [Resourcensammlung](https://github.com/Aksheet10/Cyber-security-resources#linux)
 
 ### Lernen und CTFs
-- [tryhackme](https://tryhackme.com) bietet eine Menge CTFs, bei denen LPE oft eine Rolle spielt (wir haben auch eine iteratec Gruppe, welcher ihr zugeordnet werdet, wenn ihr euch mit eurer iteratec Email Adresse registriert)
+- [tryhackme](https://tryhackme.com) bietet eine Menge CTFs, bei denen LPE oft eine Rolle spielt (wir haben auch eine iteratec Organisation, welcher du zugeordnet wirst, wenn du dich mit deiner iteratec Email Adresse registrierst)
 - [hackthebox](https://app.hackthebox.com/home)
 - [hackthebox Academy](https://academy.hackthebox.com/paths) hat einen Local PE Lernpfad
 - [Linksammlung](https://razvioverflow.github.io/starthacking) für Lernen & CTFs
