@@ -27,7 +27,7 @@ Wenn es euch möglich ist, nutzt bitte die VM - dah habt ihr mehr von!
 
 ### Virtuelle Maschine
 - Installiere [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
-- Lade dir die Virtuelle Maschine herunter
+- Lade dir die Virtuelle Maschine aus [OneDrive](https://iteratec-my.sharepoint.com/:f:/r/personal/johannes_merkert_iteratec_com/Documents/lpe_workshop?csf=1&web=1&e=jeVnQh) herunter
 - Importieren die VM in VirtualBox über Datei => Appliance importieren => heruntergeladene Datei auswählen
 - Starte die VM  über das Kontextmenü (Rechtsklick => Start => Normaler Start) oder über den grünen Pfeil
 - Du kannst auch deine lokale Konsole verwenden und via ssh auf die VM zugreifen (dann reicht auch der Headless Start)
