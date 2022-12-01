@@ -18,7 +18,7 @@ RUN chmod +r /etc/shadow
 RUN apt install -y john hashcat
 COPY files/top_100.txt /home/john/top_100.txt
 # part for sudo task
-RUN apt install -y sudo nano vim man less ftp gcc netcat
+RUN apt install -y sudo nano vim man less ftp gcc netcat tmux
 COPY files/sudoers /etc/sudoers
 RUN chmod 0440 /etc/sudoers
 # part for suid task

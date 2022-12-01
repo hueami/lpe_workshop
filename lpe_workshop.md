@@ -41,16 +41,37 @@ Das betrifft Cron Jobs und Docker selbst.
   ssh -p 5678 john@127.0.0.1
   ```
 
+## Vagrant
+- Installiere Vagrant
+- Baue die VagrantBox
+  ```
+  cd ./machines
+  vagrant up
+  ```
+- ssh auf die Maschine
+  ```
+  vagrant ssh
+  ```
+- wechseln auf john
+  ```
+  su - john
+  ```
+- wenn du die Maschine resetten möchtest:
+  ```
+  vagrant destroy
+  vagrant up
+  ```
+
 ### Docker Container
 - Installiere Docker (am einfachsten ist Docker Desktop, das ist Lizenztechnisch für unseren Workshop ok, aber für unseren Arbeitsalltag ❌ ohne Lizenz verboten)
   - alternativ funktioniert auch WSL2, Anleitungen gibts im Netz
 - Baue dir aus dem Dockerfile im Repo das Image und starte den Container
   ```
-  docker run --rm -it $(docker build -q ./docker)
+  docker run --rm -it $(docker build -q ./machines)
   ```
 - Alternativ, falls inline nicht funktioniert:
   ```
-  docker build ./docker -t lpe/hacking:latest
+  docker build ./machines -t lpe/hacking:latest
   docker run --rm -it lpe/hacking:latest
   ```
 
