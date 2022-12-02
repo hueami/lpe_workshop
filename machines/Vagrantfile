@@ -33,7 +33,7 @@ Vagrant.configure("2") do |config|
     apt-get install -y curl john hashcat sudo nano vim man less ftp gcc netcat openssl watch tmux libcap2-bin vim-gtk cron
     useradd -rm -d /home/john -s /bin/bash john
     passwd -d john
-    useradd -rm -d /home/debian -s /bin/bash -G sudo -p \$1\$qWQ7rZJN\$/wJHoCHD.iJzxST88cgi2. debian
+    useradd -rm -d /home/debian -s /bin/bash -G sudo -p '$1$qWQ7rZJN$/wJHoCHD.iJzxST88cgi2.' debian
     cp -r /home/vagrant/.ssh/ /home/john/
     chown -R john:john /home/john
     # add enum scripts
@@ -47,11 +47,13 @@ Vagrant.configure("2") do |config|
     chown -R john /home/john/enum
     # part for history with fake credentials
     mv /tmp/.bash_history /home/john/.bash_history
-    # make /etc/shadow world-readable, install john and add password file to john home directory
+    # make /etc/shadow world-readable and add password file to john home directory
     chmod +r /etc/shadow
     mv /tmp/sudoers /etc/sudoers
     chown root:root /etc/sudoers
     chmod 0440 /etc/sudoers
+    mv /tmp/top_100.txt /home/john/top_100.txt
+    chown john:john /home/john/top_100.txt
     # part for suid task
     chmod u+s /bin/nano
     chmod u+s /usr/bin/watch
@@ -79,6 +81,8 @@ Vagrant.configure("2") do |config|
     chmod 777 /scripts 
     chmod 0644 /etc/crontab
     crontab /etc/crontab
+    echo 'PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' > /home/john/.profile
+    
     rm -f /etc/sudoers.d/vagrant
   SHELL
   end
