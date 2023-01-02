@@ -29,8 +29,7 @@ Vagrant.configure("2") do |config|
   # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
-    apt-get update && apt-get upgrade
-    apt-get install -y curl john hashcat sudo nano vim man less ftp gcc netcat openssl watch tmux libcap2-bin vim-gtk cron
+    apt update && apt install -y curl john hashcat nano vim man less ftp gcc netcat openssl watch tmux libcap2-bin vim-gtk cron make
     useradd -rm -d /home/john -s /bin/bash john
     passwd -d john
     useradd -rm -d /home/debian -s /bin/bash -G sudo -p '$1$qWQ7rZJN$/wJHoCHD.iJzxST88cgi2.' debian
@@ -44,16 +43,30 @@ Vagrant.configure("2") do |config|
     curl -L https://github.com/diego-treitos/linux-smart-enumeration/releases/latest/download/lse.sh -Lo /home/john/enum/lse.sh
     curl -L https://raw.githubusercontent.com/linted/linuxprivchecker/master/linuxprivchecker.sh -Lo /home/john/enum/linuxprivchecker.sh
     chmod +x /home/john/enum/*
-    chown -R john /home/john/enum
+    chown -R john /home/john/
     # part for history with fake credentials
     mv /tmp/.bash_history /home/john/.bash_history
     # make /etc/shadow world-readable and add password file to john home directory
     chmod +r /etc/shadow
+    mv /tmp/top_100.txt /home/john/top_100.txt
+    chown john:john /home/john/top_100.txt
+    # part for sudo tasks
+    rm -f /etc/sudoers
+    curl -L http://www.sudo.ws/dist/sudo-1.8.25.tar.gz | tar xvz -C /tmp
+    cd /tmp/sudo-1.8.25/
+    ./configure --prefix=/usr              \
+        --libexecdir=/usr/lib      \
+        --with-secure-path         \
+        --with-all-insults         \
+        --with-env-editor          \
+        --docdir=/usr/share/doc/sudo-1.8.25 \
+        --with-passprompt="[sudo] password for %p: " &&\
+    make && make install && ln -sfv libsudo_util.so.0.0.0 /usr/lib/sudo/libsudo_util.so.0
     mv /tmp/sudoers /etc/sudoers
     chown root:root /etc/sudoers
     chmod 0440 /etc/sudoers
-    mv /tmp/top_100.txt /home/john/top_100.txt
-    chown john:john /home/john/top_100.txt
+    curl -L https://raw.githubusercontent.com/saleemrashid/sudo-cve-2019-18634/master/exploit.c -Lo /home/john/sudo_cve-2019-18634_exploit.c &&\
+    gcc -o /home/john/sudo_cve-2019-18634_exploit /home/john/sudo_cve-2019-18634_exploit.c
     # part for suid task
     chmod u+s /bin/nano
     chmod u+s /usr/bin/watch

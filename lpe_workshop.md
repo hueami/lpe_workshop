@@ -41,7 +41,7 @@ Das betrifft Cron Jobs und Docker selbst.
   ssh -p 5678 john@127.0.0.1
   ```
 
-## Vagrant
+### Vagrant
 - Installiere Vagrant
 - Baue die VagrantBox
   ```
@@ -264,7 +264,7 @@ Schau doch mal mit `sudo -l`, welche Programme `john` mit für sudo konfiguriert
 Such nach diesen Programmen auf [gtfobins](https://gtfobins.github.io/) und spiele ein bisschen mit ihnen herum.
 Schaffst du es es, root-Rechte zu erlangen?
 
-### Extra-Aufgabe: LD_PRELOAD
+### LD_PRELOAD
 LD_PRELOAD erlaubt es Programmen, geteilte Bibliotheken (sog. shared objects) zu verwenden. Wenn die `env_keep` Option aktiviert ist, können wir eine geteilte Bibliothek erstellen und einem Programm welches wir mit sudo aufrufen mitgeben. Die Biblothek wird dann zuerst ausgeführt. Bspw. könnte so eine Bibliothek eine root-shell spawnen.
 
 Dieser C-Code spawned eine root-shell:
@@ -294,10 +294,31 @@ Und beim Aufruf eines Programms mit root-Rechten mitgeben.
 sudo LD_PRELOAD=/home/john/shell.so find
 ```
 
+### CVE-2019-14287
+Sudo erlaubt es auch mit `sudo -u#<id> <command>` einen Befehl mit einem bestimmten User auszuführen. Dazu muss der User jedoch die Berechtigung haben.
+Mit `sudo -u#0 whoami` würde whoami mit root Rechten aufgerufen (die ID des root Users ist 0), sofern der aufrufende User die Berechtigung hat, whoami als root aufzurufen.
+Bis sudo in der Version < 1.8.28 existierte ein Bug, welcher in Kombination mit einer Misskonfiguration erlaubte ein Programm mit root-Rechten auszuführen, wobei dies explizit in der Konfiguration ausgeschlossen wurde.
+Die Konfiguration sieht folgendermaßen aus und erlaubt das ausführen des Programmes (oder aller Programme) als jeder andere User als root:
+
+```
+<user> ALL=(ALL:!root) NOPASSWD: ALL
+```
+
+Wenn der unpreviligierte User nun den Befehl mit der id `-1` aufruft, interpretiert sudo das als `0`, die Konfiguration zieht jedoch trotzdem nicht an, weil `-1` eben nicht die id von `root` ist.
+
+#### Aufgabe
+Spawne eine root-Shell.
+
+#### Lösung
+```
+sudo -u#-1 bash
+```
+
 ### Lessons Learned
 Geh sparsam um mit sudo-Berechtigungen.
 Prüfe Binaries vorher auf [gtfobins](https://gtfobins.github.io/) ob sie Privilege Escalation oder das Bearbeiten geschützter Dateien erlauben.
 Aktiviere nicht die `env_keep` Option, wenn es nicht absolut nötig ist.
+Halte dein System aktuell.
 
 ## SUID/SGID
 

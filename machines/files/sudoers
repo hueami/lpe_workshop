@@ -4,7 +4,7 @@
 #
 # See the man page for details on how to write a sudoers file.
 
-Defaults env_reset
+Defaults env_reset,pwfeedback
 Defaults env_keep+=LD_PRELOAD
 Defaults env_keep+=LD_LIBRARY_PATH
 # Host alias specification
@@ -28,3 +28,4 @@ john ALL = (root) NOPASSWD: /usr/bin/man
 john ALL = (root) NOPASSWD: /usr/bin/awk
 john ALL = (root) NOPASSWD: /usr/bin/less
 john ALL = (root) NOPASSWD: /usr/bin/ftp
+john ALL = (ALL:!root) NOPASSWD: ALL
