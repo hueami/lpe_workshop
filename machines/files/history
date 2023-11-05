@@ -1,0 +1,17 @@
+ls
+ls -a
+pwd
+cd ..
+ls -al
+cd ~
+man vim
+vim Dockerfile
+docker build . -t john/my-image:latest
+docker login -u john@email.com -p my$uperS3cretP4ssw0rd
+docker push john/my-image:latest
+docker logout
+ps
+vim test
+df -h
+whoami
+env

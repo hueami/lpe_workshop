@@ -1,0 +1,101 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  # The most common configuration options are documented and commented below.
+  # For a complete reference, please see the online documentation at
+  # https://docs.vagrantup.com.
+
+  # Every Vagrant development environment requires a box. You can search for
+  # boxes at https://vagrantcloud.com/search.
+  config.vm.box = "debian/bullseye64"
+  config.vm.host_name = "lpe"
+
+  # Add files to /tmp because vagrant is not privileged and may not add the files tot the target destination
+  # Files are moved to target location in "shell" provisioner
+  config.vm.provision "file", source: "files/top_100.txt", destination: "/tmp/top_100.txt"
+  config.vm.provision "file", source: "files/sudoers", destination: "/tmp/sudoers"
+  config.vm.provision "file", source: "files/history", destination: "/tmp/.bash_history"
+  config.vm.provision "file", source: "files/backup_home.sh", destination: "/tmp/backup_home.sh"
+  config.vm.provision "file", source: "files/backup_root.sh", destination: "/tmp/backup_root.sh"
+  config.vm.provision "file", source: "files/archive_john.sh", destination: "/tmp/archive_john.sh"
+  config.vm.provision "file", source: "files/crontab", destination: "/tmp/crontab"
+
+  # Enable provisioning with a shell script. Additional provisioners such as
+  # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the
+  # documentation for more information about their specific syntax and use.
+  config.vm.provision "shell", inline: <<-SHELL
+    apt update && apt install -y curl john hashcat nano vim man less ftp gcc netcat openssl watch tmux libcap2-bin vim-gtk cron make
+    useradd -rm -d /home/john -s /bin/bash john
+    passwd -d john
+    useradd -rm -d /home/debian -s /bin/bash -G sudo -p '$1$qWQ7rZJN$/wJHoCHD.iJzxST88cgi2.' debian
+    cp -r /home/vagrant/.ssh/ /home/john/
+    chown -R john:john /home/john
+    # add enum scripts
+    mkdir /home/john/enum
+    curl -L https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas.sh >> /home/john/enum/linpeas.sh
+    curl -L https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh -Lo /home/john/enum/LinEnum.sh
+    curl -L https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh -Lo /home/john/enum/linux-exploit-suggester.sh 
+    curl -L https://github.com/diego-treitos/linux-smart-enumeration/releases/latest/download/lse.sh -Lo /home/john/enum/lse.sh
+    curl -L https://raw.githubusercontent.com/linted/linuxprivchecker/master/linuxprivchecker.sh -Lo /home/john/enum/linuxprivchecker.sh
+    chmod +x /home/john/enum/*
+    chown -R john /home/john/
+    # part for history with fake credentials
+    mv /tmp/.bash_history /home/john/.bash_history
+    # make /etc/shadow world-readable and add password file to john home directory
+    chmod +r /etc/shadow
+    mv /tmp/top_100.txt /home/john/top_100.txt
+    chown john:john /home/john/top_100.txt
+    # part for sudo tasks
+    rm -f /etc/sudoers
+    curl -L http://www.sudo.ws/dist/sudo-1.8.25.tar.gz | tar xvz -C /tmp
+    cd /tmp/sudo-1.8.25/
+    ./configure --prefix=/usr              \
+        --libexecdir=/usr/lib      \
+        --with-secure-path         \
+        --with-all-insults         \
+        --with-env-editor          \
+        --docdir=/usr/share/doc/sudo-1.8.25 \
+        --with-passprompt="[sudo] password for %p: " &&\
+    make && make install && ln -sfv libsudo_util.so.0.0.0 /usr/lib/sudo/libsudo_util.so.0
+    mv /tmp/sudoers /etc/sudoers
+    chown root:root /etc/sudoers
+    chmod 0440 /etc/sudoers
+    #curl -L https://raw.githubusercontent.com/saleemrashid/sudo-cve-2019-18634/master/exploit.c -Lo /home/john/sudo_cve-2019-18634_exploit.c &&\
+    #gcc -o /home/john/sudo_cve-2019-18634_exploit /home/john/sudo_cve-2019-18634_exploit.c
+    # part for suid task
+    chmod u+s /bin/nano
+    chmod u+s /usr/bin/watch
+    chmod u+s /sbin/agetty
+    # part for capabilities
+    cp /usr/bin/vim /home/john/vim
+    chown root:root /home/john/vim
+    setcap cap_setuid+ep /home/john/vim
+    # part for cron jobs
+    mv /tmp/backup_home.sh /etc/backup_home.sh
+    chown root:root /etc/backup_home.sh
+    chmod o+w /etc/backup_home.sh
+    chmod +x /etc/backup_home.sh
+    mv /tmp/backup_root.sh /bin/backup_root.sh
+    chown root:root  /bin/backup_root.sh
+    chmod o+r /bin/backup_root.sh
+    chmod +x /bin/backup_root.sh
+    mv /tmp/archive_john.sh /etc/archive_john.sh
+    chown root:root  /etc/archive_john.sh
+    chmod o+r /etc/archive_john.sh
+    chmod +x /etc/archive_john.sh
+    mv /tmp/crontab /etc/crontab
+    chown root:root /etc/crontab
+    mkdir /scripts
+    chmod 777 /scripts 
+    chmod 0644 /etc/crontab
+    crontab /etc/crontab
+    echo 'PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' > /home/john/.profile
+    
+    rm -f /etc/sudoers.d/vagrant
+  SHELL
+  end
